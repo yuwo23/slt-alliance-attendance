@@ -1,0 +1,24 @@
+import {useMemo,useState} from "react";
+import {CalendarDays,Users,ClipboardCheck,BarChart3,Bell,Settings,Plus,Search,ShieldCheck,MapPin,Clock3,ChevronRight} from "lucide-react";
+import {isSupabaseConfigured} from "./lib/supabase";
+type Tab="活动"|"成员"|"统计"|"我的";type Status="到场"|"缺席"|"请假";
+type Member={id:number;name:string;group:string;status:Status;rate:number};
+const seed:Member[]=[{id:1,name:"示例成员一",group:"主力团",status:"到场",rate:92},{id:2,name:"示例成员二",group:"主力团",status:"缺席",rate:85},{id:3,name:"示例成员三",group:"二团",status:"请假",rate:78},{id:4,name:"示例成员四",group:"二团",status:"到场",rate:96}];
+export default function App(){
+const [tab,setTab]=useState<Tab>("活动"),[members,setMembers]=useState(seed),[filter,setFilter]=useState("全部"),[search,setSearch]=useState(""),[notice,setNotice]=useState(""),[showNew,setShowNew]=useState(false),[name,setName]=useState(""),[time,setTime]=useState("");
+const [events,setEvents]=useState([{name:"洛阳攻城演练",date:"今日 20:00",group:"全盟",status:"即将开始"},{name:"资源州关卡",date:"明日 21:00",group:"主力团",status:"待确认"}]);
+const visible=useMemo(()=>members.filter(m=>m.name.includes(search)&&(filter==="全部"||m.status===filter)).sort((a,b)=>["缺席","请假","到场"].indexOf(a.status)-["缺席","请假","到场"].indexOf(b.status)),[members,search,filter]);
+const create=()=>{if(!name.trim()||!time)return;setEvents(v=>[{name:name.trim(),date:time,group:"全盟",status:"即将开始"},...v]);setName("");setTime("");setShowNew(false);setNotice("活动已添加（本机演示数据）");};
+return <div className="shell"><header><div className="logo">率</div><div className="brand"><b>同盟打城考勤助手</b><small>联盟协同 · 出勤记录</small></div><button className="icon" onClick={()=>setNotice("通知中心将在后续版本开放")}><Bell/></button></header><main>
+<section className="hero"><div><small>ALLIANCE COMMAND</small><h1>作战考勤，一目了然</h1><p>把每一次集结与付出，都认真记录。</p></div><ShieldCheck size={40}/></section>
+{!isSupabaseConfigured&&<div className="warning">演示预览模式：数据库尚未连接，数据刷新后会重置。</div>}
+<div className="stats"><article><span>活动数量</span><b>{events.length}</b><small>场活动</small></article><article><span>成员总数</span><b>{members.length}</b><small>位成员</small></article><article><span>当前到场</span><b>{members.filter(m=>m.status==="到场").length}</b><small>人已签到</small></article></div>
+<div className="heading"><div><small>OPERATIONS</small><h2>{tab==="活动"?"打城活动":tab==="成员"?"成员考勤":tab==="统计"?"考勤统计":"我的考勤"}</h2></div>{tab==="活动"&&<button className="primary" onClick={()=>setShowNew(true)}><Plus size={16}/>新建活动</button>}</div>
+{tab==="活动"&&<div className="events">{events.map((e,i)=><article className="event" key={e.name+i}><small><CalendarDays size={15}/>{e.date}</small><div className="event-title"><div><b>{e.name}</b><p><MapPin size={13}/>{e.group}<span>·</span><Clock3 size={13}/>集结时间</p></div><em>{e.status}</em></div><footer>考勤记录已初始化<button onClick={()=>setNotice("活动详情将在后续版本接入")}>查看详情 <ChevronRight size={14}/></button></footer></article>)}</div>}
+{tab==="成员"&&<section className="panel"><div className="search"><Search size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="搜索成员昵称"/></div><div className="filters">{["全部","缺席","请假","到场"].map(v=><button className={filter===v?"active":""} onClick={()=>setFilter(v)} key={v}>{v}</button>)}</div>{visible.map(m=><div className="member" key={m.id}><div className="avatar">{m.name.slice(-1)}</div><div className="member-name"><b>{m.name}</b><small>{m.group} · 出勤率 {m.rate}%</small></div><select value={m.status} onChange={e=>setMembers(v=>v.map(x=>x.id===m.id?{...x,status:e.target.value as Status}:x))}><option>到场</option><option>缺席</option><option>请假</option></select></div>)}</section>}
+{tab==="统计"&&<section className="panel"><b>出勤概览</b><div className="percent">{Math.round(members.filter(m=>m.status==="到场").length/Math.max(members.length,1)*100)}%</div><p>本次活动到场比例（演示数据）</p>{members.map(m=><div className="bar" key={m.id}><span>{m.name}</span><i><u style={{width:m.rate+"%"}}/></i><b>{m.rate}%</b></div>)}</section>}
+{tab==="我的"&&<section className="panel profile"><div className="avatar big">?</div><b>尚未绑定游戏昵称</b><p>首次进入时，需要与同盟成员名单匹配并完成身份绑定。</p><button className="primary" onClick={()=>setNotice("昵称绑定与管理员复核将在接入数据库后启用")}>申请绑定昵称</button><hr/>账号与权限　 ·　 设置</section>}
+{showNew&&<div className="backdrop" onClick={()=>setShowNew(false)}><div className="modal" onClick={e=>e.stopPropagation()}><h3>新建打城活动</h3><label>城池 / 活动名称<input value={name} onChange={e=>setName(e.target.value)} placeholder="例如：长安攻城"/></label><label>集结时间<input type="datetime-local" value={time} onChange={e=>setTime(e.target.value)}/></label><button className="primary wide" onClick={create}>创建活动</button></div></div>}
+{notice&&<button className="toast" onClick={()=>setNotice("")}>{notice}　×</button>}
+</main><nav>{([{name:"活动",icon:CalendarDays},{name:"成员",icon:Users},{name:"统计",icon:BarChart3},{name:"我的",icon:Settings}] as const).map(x=><button className={tab===x.name?"chosen":""} key={x.name} onClick={()=>setTab(x.name)}><x.icon size={19}/>{x.name}</button>)}</nav></div>;
+}
